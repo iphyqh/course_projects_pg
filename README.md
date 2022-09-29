@@ -1,0 +1,2 @@
+- [x] Explicit Laplacian Smoothing (Matrix-Vector Representation)
+- [ ] Implicit Laplacian Smoothing
