@@ -599,7 +599,7 @@ void Mesh::computeVertexNormals() {
 	setVertexNormalDirty(true);
 }
 
-// Explicit Smooth
+// Explicit Smoothing
 void Mesh::umbrellaSmooth(bool cotangentWeights) {
 	/*====== Programming Assignment 1 ======*/
 	// If Taubin Smoothing is used, combination lambda = 0.33 and mu = 0.34 is advised. 
@@ -607,6 +607,7 @@ void Mesh::umbrellaSmooth(bool cotangentWeights) {
 	float lambda = 1;
 	float mu = 0; 
 	int indicator = 1; // indicates whether Taubin Smoothing is enabled, 1 for disabled; 2 for enabled.
+	int iteration = 15;
 	if (cotangentWeights) {
 		/**********************************************/
 		/*          Insert your code here.            */
@@ -620,7 +621,7 @@ void Mesh::umbrellaSmooth(bool cotangentWeights) {
 		/* weights to avoid numerical issues.
 		/**********************************************/
 		
-		// Ready to go for the implicit part now that I can play with matrices and vectors~ww
+		// Ready to go for the implicit part now that I can play with matrices and vectors~ (even if we do not have to at this stage)
 		const int size = vertices().size();
 		typedef Eigen::Triplet<double> T;
 		typedef Eigen::SparseMatrix<double> SpMat;
@@ -641,7 +642,7 @@ void Mesh::umbrellaSmooth(bool cotangentWeights) {
 			for (int i = 0; i < 3; i++)
 				(positions[i])[currIndex] = (*it)->position()[i];
 		}
-		for (int t = 0; t < 15; t++) {		
+		for (int t = 0; t < iteration; t++) {		
 			std::vector<T> tripletList;
 		
 			for (int i = 0; i < size; i++) {
@@ -713,57 +714,7 @@ void Mesh::umbrellaSmooth(bool cotangentWeights) {
 		}
 
 
-		// Deprecated part where per vertex update was used, though it is no different from the above one functional speaking
-		/*for (int t = 0; t < 15; t++) {
-			std::vector<Eigen::Vector3f> newPositions;
-			for (auto it = begin(vertices()); it != end(vertices()); ++it) {
-				if ((*it)->isBoundary())
-				{
-					newPositions.push_back((*it)->position());
-					continue;
-				} else {
-					double sumOfWeights = 0.0;
-					Eigen::Vector3f deltaPos(0, 0, 0);
-					Eigen::Vector3f oldPos = (*it)->position();
-
-					HEdge* currHEdge = (*it)->halfEdge();
-					HEdge* HEPrev = (*it)->halfEdge();
-					HEdge* HEPost = (*it)->halfEdge();
-					Vertex* InitialAdjacent = currHEdge->end();
-					
-					do {
-						HEPrev = currHEdge->twin()->next();
-						HEPost = currHEdge->next();
-
-						Eigen::Vector3f adjPos = currHEdge->end()->position();
-						Eigen::Vector3f prevPos = HEPrev->end()->position();
-						Eigen::Vector3f postPos = HEPost->end()->position();
-
-						Eigen::Vector3f a0 = oldPos - prevPos;
-						Eigen::Vector3f a1 = adjPos - prevPos;
-						Eigen::Vector3f b0 = oldPos - postPos;
-						Eigen::Vector3f b1 = adjPos - postPos;
-
-						double cota = ((a0.dot(a1)) / ((a0.cross(a1)).norm()));
-						double cotb = ((b0.dot(b1)) / ((b0.cross(b1)).norm()));
-						double weight = (cota + cotb) / 2; 
-						sumOfWeights += weight;
-						deltaPos += weight * adjPos;
-
-						currHEdge = currHEdge->twin()->next();
-					} while (currHEdge->end() != InitialAdjacent);
-
-					newPositions.push_back(oldPos + lambda*(deltaPos / sumOfWeights - oldPos));
-
-				}
-			}
-			int i = 0;
-			for (auto it = begin(vertices()); it != end(vertices()); ++it) {
-				(*it)->setPosition(newPositions[i]);
-				i++;
-			}
-
-		}*/
+	
 
 
 	} else {
@@ -774,7 +725,9 @@ void Mesh::umbrellaSmooth(bool cotangentWeights) {
 		/* Step 2: Implement the uniform weighting 
 		/* scheme for explicit mesh smoothing.
 		/**********************************************/
-		for (int t = 0; t < 15; t++) {
+
+		// My first attempt with smoothing, and to keep everything simple, I did not use any matrices and vectors on the update step
+		for (int t = 0; t < iteration; t++) {
 			
 			std::vector<Eigen::Vector3f> newPositions;
 			if ((t % indicator) == 0) {
@@ -846,37 +799,53 @@ void Mesh::umbrellaSmooth(bool cotangentWeights) {
 	setVertexPosDirty(true);
 }
 
-// Implicit Smooth
+// Implicit Smoothing
 void Mesh::implicitUmbrellaSmooth(bool cotangentWeights) {
 	/*====== Programming Assignment 1 ======*/
-
+	float lambda = 1;
+	float mu = 0;
+	int indicator = 1; // indicates whether Taubin Smoothing is enabled, 1 for disabled; 2 for enabled.
+	int iteration = 1;
 	/* A sparse linear system Ax=b solver using the conjugate gradient method. */
-	auto fnConjugateGradient = [](const Eigen::SparseMatrix< float >& A,
-	                              const Eigen::VectorXf& b,
-	                              int maxIterations,
-	                              float errorTolerance,
-	                              Eigen::VectorXf& x)
-	{
-		/**********************************************/
-		/*          Insert your code here.            */
-		/**********************************************/
-		/*
-		/* Params:
-		/*  A: 
-		/*  b: 
-		/*  maxIterations:	Max number of iterations
-		/*  errorTolerance: Error tolerance for the early stopping condition
-		/*  x:				Stores the final solution, but should be initialized. 
-		/**********************************************/
-		/*
-		/* Step 1: Implement the biconjugate gradient
-		/* method.
-		/* Hint: https://en.wikipedia.org/wiki/Biconjugate_gradient_method
-		/**********************************************/
+	// I will go with the BiCGSTAB offered by Eigen
+	//auto fnConjugateGradient = [](const Eigen::SparseMatrix< float >& A,
+	//                              const Eigen::VectorXf& b,
+	//                              int maxIterations,
+	//                              float errorTolerance,
+	//                              Eigen::VectorXf& x)
+	//{
+	//	/**********************************************/
+	//	/*          Insert your code here.            */
+	//	/**********************************************/
+	//	/*
+	//	/* Params:
+	//	/*  A: 
+	//	/*  b: 
+	//	/*  maxIterations:	Max number of iterations
+	//	/*  errorTolerance: Error tolerance for the early stopping condition
+	//	/*  x:				Stores the final solution, but should be initialized. 
+	//	/**********************************************/
+	//	/*
+	//	/* Step 1: Implement the biconjugate gradient
+	//	/* method.
+	//	/* Hint: https://en.wikipedia.org/wiki/Biconjugate_gradient_method
+	//	/**********************************************/
+
+	const int size = vertices().size();
+	typedef Eigen::Triplet<double> T;
+	typedef Eigen::SparseMatrix<double> SpMat;
 
 
+	SpMat Laplacian(size, size);
+	Eigen::VectorXd X(size); //Vertex Position X
+	Eigen::VectorXd Y(size); //Vertex Position Y
+	Eigen::VectorXd Z(size); //Vertex Position Z
+	std::vector<Eigen::VectorXd> positions;
 
-	};
+	positions.push_back(X);
+	positions.push_back(Y);
+	positions.push_back(Z);
+	//};
 
 	/* IMPORTANT:
 	/* Please refer to the following link about the sparse matrix construction in Eigen. */
@@ -896,7 +865,85 @@ void Mesh::implicitUmbrellaSmooth(bool cotangentWeights) {
 		/* It is advised to double type to store the
 		/* weights to avoid numerical issues.
 		/**********************************************/
+		for (auto it = begin(vertices()); it != end(vertices()); ++it) {
+			int currIndex = (*it)->index();
+			for (int i = 0; i < 3; i++)
+				(positions[i])[currIndex] = (*it)->position()[i];
+		}
+		for (int t = 0; t < iteration; t++) {
+			std::vector<T> tripletList;
 
+			for (int i = 0; i < size; i++) {
+				tripletList.push_back(T(i, i, 1+lambda)); // The weightings that need no updates for each iteration
+			}
+
+			for (auto it = begin(vertices()); it != end(vertices()); ++it) {
+				int currIndex = (*it)->index();
+				if ((*it)->isBoundary())
+				{
+					// newPositions.push_back((*it)->position());
+					continue;
+				}
+				else {
+					double sumOfWeights = 0.0;
+					std::vector<double> weights;
+					Eigen::Vector3f deltaPos(0, 0, 0);
+					Eigen::Vector3f oldPos = (*it)->position();
+
+					HEdge* currHEdge = (*it)->halfEdge();
+					HEdge* HEPrev = (*it)->halfEdge();
+					HEdge* HEPost = (*it)->halfEdge();
+					Vertex* InitialAdjacent = currHEdge->end();
+
+					do {
+						HEPrev = currHEdge->twin()->next();
+						HEPost = currHEdge->next();
+
+						Eigen::Vector3f adjPos = currHEdge->end()->position();
+						Eigen::Vector3f prevPos = HEPrev->end()->position();
+						Eigen::Vector3f postPos = HEPost->end()->position();
+
+						Eigen::Vector3f a0 = oldPos - prevPos;
+						Eigen::Vector3f a1 = adjPos - prevPos;
+						Eigen::Vector3f b0 = oldPos - postPos;
+						Eigen::Vector3f b1 = adjPos - postPos;
+
+						double cota = ((a0.dot(a1)) / ((a0.cross(a1)).norm()));
+						double cotb = ((b0.dot(b1)) / ((b0.cross(b1)).norm()));
+						double weight = (cota + cotb) / 2;
+						weights.push_back(weight);
+						sumOfWeights += weight;
+
+						currHEdge = currHEdge->twin()->next();
+					} while (currHEdge->end() != InitialAdjacent);
+
+					currHEdge = (*it)->halfEdge();
+					int i = 0;
+					do {
+						int index = currHEdge->end()->index();
+						tripletList.push_back(T(currIndex, index, -weights[i] / sumOfWeights));
+						currHEdge = currHEdge->twin()->next();
+						i++;
+					} while (currHEdge->end() != InitialAdjacent);
+				}
+
+			}
+
+			Laplacian.setFromTriplets(tripletList.begin(), tripletList.end());
+			Eigen::BiCGSTAB<SpMat> solver;
+			solver.compute(Laplacian); // Actually, the Laplacian here stands for I-lambda*Laplacian
+			for (int i = 0; i < 3; i++)
+				positions[i] = solver.solve(positions[i]);
+			std::cout << "#iterations:     " << solver.iterations() << std::endl;
+			std::cout << "estimated error: " << solver.error() << std::endl;
+			int i = 0;
+			for (auto it = begin(vertices()); it != end(vertices()); ++it) {
+				int currIndex = (*it)->index();
+				(*it)->setPosition(Eigen::Vector3f(positions[0][currIndex], positions[1][currIndex], positions[2][currIndex]));
+				i++;
+			}
+
+		}
 
 	} else {
 		/**********************************************/
@@ -909,7 +956,70 @@ void Mesh::implicitUmbrellaSmooth(bool cotangentWeights) {
 		/* sparse linear systems.
 		/**********************************************/
 
+		for (auto it = begin(vertices()); it != end(vertices()); ++it) {
+			int currIndex = (*it)->index();
+			for (int i = 0; i < 3; i++)
+				(positions[i])[currIndex] = (*it)->position()[i];
+		}
+		for (int t = 0; t < iteration; t++) {
+			std::vector<T> tripletList;
 
+			for (int i = 0; i < size; i++) {
+				tripletList.push_back(T(i, i, 1 + lambda)); // The weightings that need no updates for each iteration
+			}
+
+			for (auto it = begin(vertices()); it != end(vertices()); ++it) {
+				int currIndex = (*it)->index();
+				if ((*it)->isBoundary())
+				{
+					// newPositions.push_back((*it)->position());
+					continue;
+				}
+				else {
+					double sumOfWeights = 0.0;
+					std::vector<double> weights;
+					Eigen::Vector3f deltaPos(0, 0, 0);
+					Eigen::Vector3f oldPos = (*it)->position();
+
+					HEdge* currHEdge = (*it)->halfEdge();
+					HEdge* HEPrev = (*it)->halfEdge();
+					HEdge* HEPost = (*it)->halfEdge();
+					Vertex* InitialAdjacent = currHEdge->end();
+
+					do {
+						weights.push_back(1);
+						sumOfWeights += 1;
+
+						currHEdge = currHEdge->twin()->next();
+					} while (currHEdge->end() != InitialAdjacent);
+
+					currHEdge = (*it)->halfEdge();
+					int i = 0;
+					do {
+						int index = currHEdge->end()->index();
+						tripletList.push_back(T(currIndex, index, -weights[i] / sumOfWeights));
+						currHEdge = currHEdge->twin()->next();
+						i++;
+					} while (currHEdge->end() != InitialAdjacent);
+				}
+
+			}
+
+			Laplacian.setFromTriplets(tripletList.begin(), tripletList.end());
+			Eigen::BiCGSTAB<SpMat> solver;
+			solver.compute(Laplacian); // Actually, the Laplacian here stands for I-lambda*Laplacian
+			for (int i = 0; i < 3; i++)
+				positions[i] = solver.solve(positions[i]);
+			std::cout << "#iterations:     " << solver.iterations() << std::endl;
+			std::cout << "estimated error: " << solver.error() << std::endl;
+			int i = 0;
+			for (auto it = begin(vertices()); it != end(vertices()); ++it) {
+				int currIndex = (*it)->index();
+				(*it)->setPosition(Eigen::Vector3f(positions[0][currIndex], positions[1][currIndex], positions[2][currIndex]));
+				i++;
+			}
+
+		}
 
 	}
 
