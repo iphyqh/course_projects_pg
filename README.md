@@ -1,5 +1,1 @@
-- [x] Explicit Laplacian Smoothing (Matrix-Vector Representation)
-- [x] Implicit Laplacian Smoothing (Same as above)
-- [ ] Additional bugs to handle:
-  - [ ] Shading defect
-  - [ ] Boundary handling in Laplacian matrix
+Everything on graphics pg course
