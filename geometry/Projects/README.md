@@ -1,6 +1,7 @@
 - [ ] Mesh statistics
 - [x] Explicit Laplacian Smoothing (Matrix-Vector Representation)
 - [x] Implicit Laplacian Smoothing (Same as above)
+- [x] Laplacian surface editing
 - [ ] Additional bugs to handle:
   - [ ] Shading defect
   - [ ] Boundary handling in Laplacian matrix
