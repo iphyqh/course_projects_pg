@@ -4,4 +4,4 @@
 - [x] Laplacian surface editing
 - [ ] Additional bugs to handle:
   - [ ] Shading defect
-  - [ ] Boundary handling in Laplacian matrix
+  - [x] Boundary handling in Laplacian matrix
