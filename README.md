@@ -1,1 +1,1 @@
-Everything on graphics pg course
+Everything on PG course Advanced Computer Graphics in HKUST
