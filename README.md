@@ -1,2 +1,2 @@
 # Graphics Course Project
-Everything on PG course Advanced Computer Graphics in HKUST
+Everything on the PG course Advanced Computer Graphics in HKUST
